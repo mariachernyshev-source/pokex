@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="ru">
+<head>
+    <meta charset="utf-8">
+    <title>Карта покемонского мира</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <h1>Карта покемонского мира</h1>
+
+    <nav>
+        <a href="index.html">Главная</a> |
+        <a href="map.html">Карта</a>
+    </nav>
+    <div id="map-container">
+        <img id="map" src="images/map.jpg" alt="карта покемонского мира">
+        <img
+        src="images/pikachu-icon.png"
+        class="marker"
+        id="marker-pikachu"
+        style="left: 200px; top: 150px;"
+        >
+    </div>
+    <div style="margin-top: 10px;">
+        <button id="zoom-in">Увеличить</button>
+        <button id="zoom-out">Уменьшить</button>
+    </div>
+    <script src="map.js" defer></script>
+</body>
+</html>

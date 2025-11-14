@@ -1,0 +1,68 @@
+body {
+  font-family: 'Playpen Sans', -apple-system,sans-serif;
+  padding:24px;
+  background-color: #f0f4f8;
+ }
+h1{ margin-bottom: 16px;}
+ .card {
+     display:inline-block;
+     border:2px solid #ffc0cb;
+     border-radius: 12px;
+     padding: 12px;
+     margin: 8px;
+     max-width: 220px;
+     text-align: center;
+      transition: transform 1.0s, box-shadow 0.3s, border-color 0.3s, background-color 0.3s;
+ }
+ .card:hover {
+   transform: translateY(-5px);
+   box-shadow: 0 8px 24px rgba(0, 0, 0, 1);
+ }
+ .card img {display: block; margin: 0 auto 8px; }
+ .card.caught {border-color: #6ad06f; background: #6495ED;}
+ .catch { cursor: cell; }
+ .card.rare {
+  border-color: #ff66ff; /* Синяя рамка для редких */
+ }
+ .card.legendary {
+  border-color: #FF0004;
+  /*красная рамка для легендарных */
+  transition: tarnsform 0.3 ease;
+ }
+ .card.rare.caught {
+  border-color: #2a67ad;
+transition:  transform 0.3s ease
+ }
+ .card.legendary.caught {
+  border-color: #c5851e;
+ }
+
+ /* Контейнер карты */
+#map-container {
+  position: relative;
+  width: 100%;
+  max-width: 900px;
+  margin: 20px auto;
+  border: 3px solid #aaa;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+/* Картинка карты */
+#map {
+  width: 100%;
+  display: block;
+}
+
+/* Значок героя */
+.marker {
+  position: absolute;
+  width: 64px;
+  cursor: grab;
+  transition: transform 0.2s;
+}
+
+.marker:active {
+  cursor: grabbing;
+  transform: scale(1.1);
+}
