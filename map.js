@@ -12,9 +12,53 @@ const pokemonImages = {
   squirtle: new Image()
 };
 
+// Поправленные пути: смотрим в папке `images`
 pokemonImages.pikachu.src = 'images/icons/pikachu-icon.png';
-pokemonImages.charmander.src = 'images/icons/charmander2-icon.webp';
-pokemonImages.squirtle.src = 'images/skwirtl-icon.png';
+pokemonImages.charmander.src = 'images/charmander2.webp';
+pokemonImages.squirtle.src = 'images/skwirtl.png';
+
+// Перерисовываем сцену, когда иконки покемонов загрузились.
+Object.values(pokemonImages).forEach(img => {
+  img.onload = () => {
+    // если картинка загрузилась — перерисуем сцену (покемоны появятся)
+    drawScene();
+  };
+  img.onerror = () => {
+    console.warn('Не удалось загрузить иконку покемона:', img.src);
+  };
+});
+
+// Предупреждение, если карта не загрузилась
+mapImage.onerror = () => console.warn('Не удалось загрузить изображение карты:', mapImage.src);
+
+// --- "Места" на карте и покемоны ---
+// Координаты в системе карты (как будто карта нарисована от (0,0))
+const spots = [
+  {
+    id: 'hill',
+    x: 400,
+    y: 300,
+    radius: 40,
+    pokemon: 'pikachu',
+    visible: false
+  },
+  {
+    id: 'rock',
+    x: 700,
+    y: 450,
+    radius: 40,
+    pokemon: 'charmander',
+    visible: false
+  },
+  {
+    id: 'pond',
+    x: 250,
+    y: 520,
+    radius: 50,
+    pokemon: 'squirtle',
+    visible: false
+  }
+];
 
 // Параметры камеры (как мы смотрим на карту)
 let scale = 1;        // масштаб (1 = обычный размер)
@@ -22,19 +66,48 @@ let offsetX = 0;      // сдвиг по горизонтали
 let offsetY = 0;      // сдвиг по вертикали
 
 // Ограничения по зуму
-const MIN_SCALE = 0.4;
+// Не позволяем уменьшать карту меньше её настоящего размера (1 = реальный размер)
+const MIN_SCALE = 1;
 const MAX_SCALE = 4;
+
+// Глобальные флаги отладки
+// Показывать контуры мест (кружки и подписи) — удобно для теста и чтобы понять, куда кликать
+const DEBUG_SHOW_SPOTS = false;
+// Показывать мини-иконки в углу и логировать их — временно для диагностики, выключим после
+const DEBUG_SHOW_THUMBNAILS = false;
 
 // Когда картинка карты загрузится — нарисуем её
 mapImage.onload = function () {
-  loadState();   // сначала загрузим сохранённые данные
-  drawScene();   // потом нарисуем карту с учётом масштаба/покемонов
+  // Установим размер холста равным размеру изображения карты (размер в размер)
+  try {
+    // некоторые браузеры/сборки могут не сразу иметь ширину/высоту, но у нас известный размер
+    canvas.width = mapImage.width || 825;
+    canvas.height = mapImage.height || 583;
+    // также зафиксируем CSS-ширину/высоту, чтобы браузер не растягивал canvas
+    canvas.style.width = canvas.width + 'px';
+    canvas.style.height = canvas.height + 'px';
+  } catch (e) {
+    console.warn('Не удалось задать размер холста по изображению карты:', e);
+  }
+
+  // Сначала загрузим сохранённые данные (если есть), потом нарисуем сцену
+  loadState();
+  // После загрузки состояния — гарантируем, что масштаб в допустимых пределах
+  if (typeof scale === 'number') {
+    if (scale < MIN_SCALE) scale = MIN_SCALE;
+    if (scale > MAX_SCALE) scale = MAX_SCALE;
+  }
+  console.log('Загруженное состояние карты:', localStorage.getItem('pokemonMapState'));
+  drawScene();
 };
 
 // Функция drawScene, которая рисует карту и всё, что на ней
 function drawScene() {
   // Чистим холст
   ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  // Перед рисованием убедимся, что смещения в допустимых пределах
+  clampOffsets();
 
   // Сохраняем состояние "кисти"
   ctx.save();
@@ -51,7 +124,14 @@ function drawScene() {
     if (!spot.visible) return;
 
     const img = pokemonImages[spot.pokemon];
-    if (!img.complete) return; // картинка ещё не загрузилась
+    if (!img) {
+      console.warn(`Иконка для ${spot.pokemon} не найдена в pokemonImages`);
+      return;
+    }
+    if (!img.complete) {
+      console.warn(`Иконка ${spot.pokemon} для места ${spot.id} ещё не загружена: ${img.src}`);
+      return; // картинка ещё не загрузилась
+    }
 
     const size = 64; // размер иконки
     const half = size / 2;
@@ -59,8 +139,87 @@ function drawScene() {
     ctx.drawImage(img, spot.x - half, spot.y - half, size, size);
   });
 
+  // Временная отладка: нарисовать контуры мест (кружки) и подписи,
+  // чтобы было видно, где именно расположены места на карте.
+  if (DEBUG_SHOW_SPOTS) {
+    spots.forEach(spot => {
+      ctx.beginPath();
+      ctx.arc(spot.x, spot.y, spot.radius, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(0, 128, 0, 0.08)';
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(0, 128, 0, 0.6)';
+      ctx.lineWidth = 2 / (scale || 1);
+      ctx.stroke();
+
+      // подпись id
+      ctx.fillStyle = 'rgba(0,0,0,0.7)';
+      ctx.font = `${14 / (scale || 1)}px sans-serif`;
+      ctx.fillText(spot.id, spot.x - spot.radius, spot.y - spot.radius - 6 / (scale || 1));
+
+      // предупреждение в консоль, если spot.visible=true, но картинка не загружена
+      if (spot.visible) {
+        const img = pokemonImages[spot.pokemon];
+        if (!img || !img.complete) {
+          console.warn(`Покемон ${spot.pokemon} для места ${spot.id} отмечен как видимый, но иконка не загружена:`, img && img.src);
+        }
+      }
+    });
+  }
+
+
+// Ограничиваем смещения так, чтобы карта не «уходила» и не показывала фон за её краями.
+function clampOffsets() {
+  if (!mapImage || !mapImage.width || !mapImage.height) return;
+
+  const scaledWidth = mapImage.width * scale;
+  const scaledHeight = mapImage.height * scale;
+
+  // Для оси X: когда карта больше холста — ограничиваем смещение между [canvas.width - scaledWidth, 0]
+  // Когда карта меньше холста — фиксируем по левому краю (offsetX = 0)
+  if (scaledWidth > canvas.width) {
+    const minX = canvas.width - scaledWidth;
+    if (offsetX < minX) offsetX = minX;
+    if (offsetX > 0) offsetX = 0;
+  } else {
+    // карта уже помещается — фиксируем по левому краю
+    offsetX = 0;
+  }
+
+  // Для оси Y: аналогично
+  if (scaledHeight > canvas.height) {
+    const minY = canvas.height - scaledHeight;
+    if (offsetY < minY) offsetY = minY;
+    if (offsetY > 0) offsetY = 0;
+  } else {
+    offsetY = 0;
+  }
+}
   // Возвращаемся к обычному состоянию
   ctx.restore();
+
+  // Отладка: рисуем мини-иконки покемонов в правом верхнем углу и логируем их размеры,
+  // чтобы проверить, загружены ли изображения и видны ли они на холсте.
+  if (DEBUG_SHOW_THUMBNAILS) {
+    const thumbSize = 32;
+    let i = 0;
+    Object.entries(pokemonImages).forEach(([name, img]) => {
+      const x = canvas.width - (i + 1) * (thumbSize + 8);
+      const y = 8;
+      if (img && img.complete && img.naturalWidth > 0) {
+        ctx.drawImage(img, x, y, thumbSize, thumbSize);
+      } else {
+        // Рисуем заглушку
+        ctx.fillStyle = 'rgba(200,200,200,0.6)';
+        ctx.fillRect(x, y, thumbSize, thumbSize);
+        ctx.fillStyle = '#000';
+        ctx.fillText(name[0], x + 8, y + 20);
+      }
+      if (DEBUG_SHOW_THUMBNAILS) {
+        console.log(`ICON ${name}: src=${img && img.src} complete=${img && img.complete} natural=${img && img.naturalWidth}x${img && img.naturalHeight}`);
+      }
+      i++;
+    });
+  }
 }
 
 // Переводит координаты мыши в координаты карты
@@ -106,7 +265,25 @@ canvas.addEventListener('mousemove', (event) => {
 canvas.addEventListener('mouseup', () => {
   isDragging = false;
   canvas.style.cursor = 'grab';
-  // --- Клик по карте ---
+  saveState(); // сохраним положение после отпускания
+});
+
+canvas.addEventListener('mouseleave', () => {
+  isDragging = false;
+  canvas.style.cursor = 'grab';
+});
+
+// Обработчик кнопки "Показать всё" — пометить все места видимыми (для теста)
+const showAllBtn = document.getElementById('show-all');
+if (showAllBtn) {
+  showAllBtn.addEventListener('click', () => {
+    spots.forEach(s => s.visible = true);
+    drawScene();
+    saveState();
+  });
+}
+
+// --- Клик по карте (вынесен отдельно, не внутри mouseup) ---
 canvas.addEventListener('click', (event) => {
   // Если сейчас тащим карту — не обрабатывать как клик по месту
   if (isDragging) return;
@@ -132,13 +309,6 @@ canvas.addEventListener('click', (event) => {
     drawScene();
     saveState();
   }
-});
-  saveState(); // будем сохранять положение
-});
-
-canvas.addEventListener('mouseleave', () => {
-  isDragging = false;
-  canvas.style.cursor = 'grab';
 });
 
 // --- Зум колесиком мыши ---
@@ -171,34 +341,6 @@ canvas.addEventListener('wheel', (event) => {
   offsetY = mouseY - (mouseY - offsetY) * zoomFactor;
 
   scale = newScale;
-  // --- "Места" на карте и покемоны ---
-// Координаты в системе карты (как будто карта нарисована от (0,0))
-const spots = [
-  {
-    id: 'hill',
-    x: 400,
-    y: 300,
-    radius: 40,
-    pokemon: 'pikachu',
-    visible: false
-  },
-  {
-    id: 'rock',
-    x: 700,
-    y: 450,
-    radius: 40,
-    pokemon: 'charmander',
-    visible: false
-  },
-  {
-    id: 'pond',
-    x: 250,
-    y: 600,
-    radius: 50,
-    pokemon: 'squirtle',
-    visible: false
-  }
-];
   drawScene();
   saveState();
 }, { passive: false });
