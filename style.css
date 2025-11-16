@@ -49,20 +49,22 @@ transition:  transform 0.3s ease
 }
 
 /* Картинка карты */
-#map {
+#map-container {
+  position: relative;
   width: 100%;
+  max-width: 900px;
+  margin: 20px auto;
+  border: 3px solid #d6b3ff;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #d0c8f8; /* фон вокруг карты на всякий случай */
+}
+
+/* Холст карты */
+#map-canvas {
   display: block;
-}
-
-/* Значок героя */
-.marker {
-  position: absolute;
-  width: 64px;
+  width: 100%;  /* растягиваем по ширине контейнера */
+  height: auto;
+  background: #95d3ff; /* пока карта не загрузилась */
   cursor: grab;
-  transition: transform 0.2s;
-}
-
-.marker:active {
-  cursor: grabbing;
-  transform: scale(1.1);
 }
